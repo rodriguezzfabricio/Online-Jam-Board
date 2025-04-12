@@ -1,11 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 const StickyNote = ({ 
   id, 
   initialX, 
   initialY, 
   color = '#fff9c4',
+  content = '',
   onDelete,
+  onContentChange,
   tool,
   brushColor,
   brushSize
@@ -16,10 +18,20 @@ const StickyNote = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [size, setSize] = useState({ width: 200, height: 200 });
+  const [noteContent, setNoteContent] = useState(content || 'Click to add text...');
   
   const noteRef = useRef(null);
   const canvasRef = useRef(null);
+  const contentRef = useRef(null);
   const resizeHandleRef = useRef(null);
+  
+  // Update local content when prop changes (via WebSocket)
+  useEffect(() => {
+    if (content && content !== noteContent && contentRef.current) {
+      setNoteContent(content);
+      contentRef.current.innerText = content;
+    }
+  }, [content, noteContent]);
   
   // Initialize canvas
   useEffect(() => {
@@ -96,7 +108,7 @@ const StickyNote = ({
   }, [isDrawing, tool, brushColor, brushSize, isTyping, color]);
   
   // Handle dragging
-  const handleMouseDown = (e) => {
+  const handleMouseDown = useCallback((e) => {
     if (e.target === resizeHandleRef.current) return;
     
     if (e.target.classList.contains('note-content') || 
@@ -110,9 +122,9 @@ const StickyNote = ({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
-  };
+  }, []);
   
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (!isDragging) return;
     
     const boardRect = noteRef.current.parentElement.getBoundingClientRect();
@@ -127,14 +139,33 @@ const StickyNote = ({
       x: Math.max(0, Math.min(newX, maxX)),
       y: Math.max(0, Math.min(newY, maxY))
     });
-  };
+  }, [isDragging, dragOffset]);
   
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+    
+    // Send position update via WebSocket
+    if (onContentChange) {
+      onContentChange(id, noteContent, { x: position.x, y: position.y });
+    }
+  }, [id, noteContent, onContentChange, position.x, position.y]);
+  
+  // Handle content changes
+  const handleContentChange = useCallback((e) => {
+    const newContent = e.target.innerText;
+    setNoteContent(newContent);
+  }, []);
+  
+  // Send content changes to parent/WebSocket when user finishes editing
+  const handleContentBlur = useCallback(() => {
+    setIsTyping(false);
+    if (onContentChange) {
+      onContentChange(id, noteContent);
+    }
+  }, [id, noteContent, onContentChange]);
   
   // Resize functionality
-  const handleResizeStart = (e) => {
+  const handleResizeStart = useCallback((e) => {
     e.stopPropagation();
     
     const startX = e.clientX;
@@ -163,11 +194,16 @@ const StickyNote = ({
     const handleResizeEnd = () => {
       document.removeEventListener('mousemove', handleResize);
       document.removeEventListener('mouseup', handleResizeEnd);
+      
+      // Send size update
+      if (onContentChange) {
+        onContentChange(id, noteContent, { width: size.width, height: size.height });
+      }
     };
     
     document.addEventListener('mousemove', handleResize);
     document.addEventListener('mouseup', handleResizeEnd);
-  };
+  }, [color, id, noteContent, onContentChange, size.height, size.width]);
   
   // Add event listeners for dragging
   useEffect(() => {
@@ -183,7 +219,7 @@ const StickyNote = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
   
   return (
     <div 
@@ -231,14 +267,16 @@ const StickyNote = ({
       
       {/* Note content - editable (when in text mode) */}
       <div 
+        ref={contentRef}
         className="note-content"
         contentEditable="true"
         suppressContentEditableWarning={true}
         onFocus={() => setIsTyping(true)}
-        onBlur={() => setIsTyping(false)}
+        onBlur={handleContentBlur}
+        onInput={handleContentChange}
         style={{ display: (tool === 'pen' || tool === 'eraser') && !isTyping ? 'none' : 'block' }}
       >
-        Click to add text...
+        {noteContent}
       </div>
       
       {/* Resize handle */}

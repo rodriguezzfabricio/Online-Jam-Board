@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Toolbar from './Toolbar';
 import StickyNote from './StickyNote';
+import webSocketService from '../services/WebSocketService';
 
 const COLORS = {
   yellow: '#fff9c4',
@@ -18,47 +19,40 @@ const Canvas = ({ boardId }) => {
   const [currentNoteColor, setCurrentNoteColor] = useState(COLORS.yellow);
   const boardRef = useRef(null);
   
-  // Load saved notes on initial render
-  useEffect(() => {
-    loadBoard();
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((data) => {
+    if (data.type === 'DELETE') {
+      // Handle note deletion
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== data.id));
+    } else {
+      // Handle note creation/update
+      setNotes(prevNotes => {
+        const noteIndex = prevNotes.findIndex(note => note.id === data.id);
+        if (noteIndex >= 0) {
+          // Update existing note
+          const updatedNotes = [...prevNotes];
+          updatedNotes[noteIndex] = data;
+          return updatedNotes;
+        } else {
+          // Add new note
+          return [...prevNotes, data];
+        }
+      });
+    }
   }, []);
   
-  // Add a new sticky note
-  const handleAddNote = () => {
-    const board = boardRef.current;
-    const boardRect = board.getBoundingClientRect();
-    
-    const newNote = {
-      id: Date.now(),
-      x: (boardRect.width / 2) - 100,
-      y: (boardRect.height / 2) - 100,
-      color: currentNoteColor
-    };
-    
-    setNotes([...notes, newNote]);
-  };
+  // Get backend URL using the same method as WebSocketService
+  const getBackendUrl = useCallback(() => {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8080';
+    } else {
+      return `http://${hostname}:8080`;
+    }
+  }, []);
   
-  // Remove a note
-  const handleDeleteNote = (id) => {
-    setNotes(notes.filter(note => note.id !== id));
-  };
-  
-  // Change note color
-  const handleNoteColorChange = (color) => {
-    setCurrentNoteColor(COLORS[color] || COLORS.yellow);
-  };
-  
-  // Save board to local storage
-  const saveBoard = () => {
-    localStorage.setItem('jamBoard', JSON.stringify({
-      boardId,
-      notes
-    }));
-    alert('Board saved successfully!');
-  };
-  
-  // Load board from local storage
-  const loadBoard = () => {
+  // Load board from local storage - moved up to solve reference issue
+  const loadBoard = useCallback(() => {
     try {
       const savedBoard = localStorage.getItem('jamBoard');
       if (savedBoard) {
@@ -73,6 +67,111 @@ const Canvas = ({ boardId }) => {
       console.error('Error loading board:', err);
       return false;
     }
+  }, []);
+  
+  // Connect to WebSocket and load notes
+  useEffect(() => {
+    // Connect to WebSocket
+    webSocketService.connect(handleWebSocketMessage);
+    
+    // Fetch notes from API
+    const fetchNotes = async () => {
+      try {
+        // Use direct URL for testing
+        const backendUrl = 'http://localhost:8080';
+        console.log(`Fetching notes from: ${backendUrl}/api/notes/board/${boardId}`);
+        
+        // Create default UUID if not provided
+        const useBoardId = boardId || 'default-board';
+        
+        // Convert string to UUID if it's not already a UUID
+        let boardIdParam = useBoardId;
+        if (useBoardId === 'default-board') {
+          // For default-board, use a hardcoded UUID that matches what's in the database
+          boardIdParam = '00000000-0000-0000-0000-000000000000';
+        }
+        
+        const response = await fetch(`${backendUrl}/api/notes/board/${boardIdParam}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Origin': 'http://localhost:3000'
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched notes successfully:', data);
+          setNotes(data);
+        } else {
+          console.error('API returned error status:', response.status);
+          // Fall back to local storage
+          const loaded = loadBoard();
+          console.log('Loaded from local storage:', loaded);
+        }
+      } catch (error) {
+        console.error('Error fetching notes:', error);
+        // Fall back to local storage
+        const loaded = loadBoard();
+        console.log('Loaded from local storage:', loaded);
+      }
+    };
+    
+    fetchNotes();
+    
+    // Clean up WebSocket connection on unmount
+    return () => {
+      webSocketService.disconnect();
+    };
+  }, [boardId, handleWebSocketMessage, loadBoard]);
+  
+  // Add a new sticky note
+  const handleAddNote = () => {
+    const board = boardRef.current;
+    const boardRect = board.getBoundingClientRect();
+    
+    const newNote = {
+      id: Date.now(),
+      boardId: boardId,
+      x: (boardRect.width / 2) - 100,
+      y: (boardRect.height / 2) - 100,
+      color: currentNoteColor,
+      content: ''
+    };
+    
+    // Send via WebSocket
+    webSocketService.sendNote(newNote);
+    
+    // Optimistically update UI
+    setNotes([...notes, newNote]);
+  };
+  
+  // Remove a note
+  const handleDeleteNote = useCallback((id) => {
+    // Send delete request via WebSocket
+    if (webSocketService.stompClient && webSocketService.connected) {
+      webSocketService.stompClient.send('/app/note/delete', {}, JSON.stringify({ id }));
+    } else {
+      console.error('Cannot delete note: WebSocket not connected');
+    }
+    
+    // Optimistically update UI
+    setNotes(notes => notes.filter(note => note.id !== id));
+  }, []);
+  
+  // Change note color
+  const handleNoteColorChange = (color) => {
+    setCurrentNoteColor(COLORS[color] || COLORS.yellow);
+  };
+  
+  // Save board to local storage (backup)
+  const saveBoard = () => {
+    localStorage.setItem('jamBoard', JSON.stringify({
+      boardId,
+      notes
+    }));
+    alert('Board saved successfully!');
   };
   
   // Export board as image
@@ -89,6 +188,15 @@ const Canvas = ({ boardId }) => {
       alert('Failed to export image. Please try again.');
     });
   };
+  
+  // Update note content
+  const handleNoteContentChange = useCallback((id, content) => {
+    const updatedNote = notes.find(note => note.id === id);
+    if (updatedNote) {
+      updatedNote.content = content;
+      webSocketService.sendNote(updatedNote);
+    }
+  }, [notes]);
   
   return (
     <>
@@ -116,7 +224,9 @@ const Canvas = ({ boardId }) => {
             initialX={note.x}
             initialY={note.y}
             color={note.color}
+            content={note.content}
             onDelete={handleDeleteNote}
+            onContentChange={handleNoteContentChange}
             tool={tool}
             brushColor={color}
             brushSize={brushWidth}

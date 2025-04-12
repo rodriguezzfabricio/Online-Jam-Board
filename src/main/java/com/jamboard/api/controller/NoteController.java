@@ -24,8 +24,19 @@ public class NoteController {
     }
 
     @GetMapping("/board/{boardId}")
-    public ResponseEntity<List<Notes>> getNotesByBoard(@PathVariable UUID boardId) {
-        return ResponseEntity.ok(noteService.getNotesByBoardId(boardId));
+    public ResponseEntity<List<Notes>> getNotesByBoard(@PathVariable String boardId) {
+        UUID boardUUID;
+        if (boardId.equals("default-board")) {
+            // Use a predefined UUID for the default board
+            boardUUID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+        } else {
+            try {
+                boardUUID = UUID.fromString(boardId);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        return ResponseEntity.ok(noteService.getNotesByBoardId(boardUUID));
     }
 
     @GetMapping("/{id}")
