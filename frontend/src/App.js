@@ -10,7 +10,7 @@ const App = () => {
   return (
     <div className="app">
       <header>
-        <h1>Online Jam Board</h1>
+        <h1>ONLINE JAM BOARD</h1>
       </header>
       <main>
         <Canvas boardId={boardId} />

@@ -94,6 +94,7 @@ main {
   justify-content: center;
   cursor: pointer;
   color: #212121;
+  transition: all 0.2s ease;
 }
 
 .tool-btn svg {
@@ -103,11 +104,21 @@ main {
 
 .tool-btn:hover {
   background-color: #f0f0f0;
+  transform: translateY(-2px);
 }
 
 .tool-btn.active {
-  background-color: #f0f0f0;
-  border-color: #d8d8d8;
+  background-color: #4CAF50;
+  border-color: #388E3C;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Color options */
+.color-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Color picker */
@@ -117,6 +128,17 @@ main {
   border-radius: 8px;
   border: 1px solid #e6e6e6;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.color-btn.active {
+  border: 3px solid #212121;
+  transform: scale(1.1);
 }
 
 /* Brush size slider */
@@ -142,6 +164,67 @@ input[type="range"]::-webkit-slider-thumb {
   background: #212121;
   border-radius: 50%;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.brush-size-label {
+  font-size: 0.875rem;
+  color: #212121;
+  align-self: flex-end;
+  padding: 2px 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* Note colors section */
+.note-colors {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.note-color-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  border: 1px solid #e6e6e6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.note-color-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.note-color-btn.active {
+  border: 2px solid #212121;
+  transform: scale(1.1);
+}
+
+/* Add button */
+.add-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.add-btn:hover {
+  background-color: #388E3C;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 /* Cork board */
@@ -176,6 +259,12 @@ input[type="range"]::-webkit-slider-thumb {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.add-note-btn:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .add-note-btn svg {
@@ -186,7 +275,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* Sticky note */
 .sticky-note {
   position: absolute;
-  background-color: #fff9c4; /* Light yellow sticky note color */
+  background-color: #fff9c4; /* Default yellow sticky note color */
   width: 200px;
   height: 200px;
   box-shadow: 0 3px 10px rgba(0,0,0,0.1);
@@ -196,10 +285,13 @@ input[type="range"]::-webkit-slider-thumb {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .sticky-note:hover {
   box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+  z-index: 10;
 }
 
 /* Push pin */
@@ -218,6 +310,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 24px;
   background-color: #e53935; /* Red pin */
   border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .pin-point {
@@ -239,35 +332,7 @@ input[type="range"]::-webkit-slider-thumb {
   left: 10px;
 }
 
-/* Sticky note content */
-.note-content {
-  flex: 1;
-  overflow: auto;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.note-content[contenteditable="true"] {
-  outline: none;
-}
-
-/* Add button */
-.add-btn {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  margin-top: 15px;
-}
-
-.add-btn:hover {
-  background-color: #388E3C;
-}
-
-/* Delete button styling */
+/* Delete button */
 .delete-btn {
   position: absolute;
   top: 5px;
@@ -293,4 +358,117 @@ input[type="range"]::-webkit-slider-thumb {
   opacity: 1;
   background-color: rgba(255, 255, 255, 0.5);
   transform: scale(1.1);
+}
+
+/* Sticky note content */
+.note-content {
+  flex: 1;
+  overflow: auto;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+  z-index: 5;
+}
+
+.note-content:focus {
+  outline: none;
+}
+
+/* Canvas styling inside sticky note */
+.sticky-note canvas {
+  background-color: transparent;
+  border: none;
+}
+
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px 0 3px 0;
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Board actions */
+.board-actions {
+  margin-top: 15px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn {
+  background-color: #f6f6f6;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.save-btn {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.save-btn:hover {
+  background-color: #bbdefb;
+}
+
+.load-btn {
+  background-color: #f1f8e9;
+  color: #558b2f;
+}
+
+.load-btn:hover {
+  background-color: #dcedc8;
+}
+
+.export-btn {
+  background-color: #fff3e0;
+  color: #ef6c00;
+}
+
+.export-btn:hover {
+  background-color: #ffe0b2;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  main {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .toolbar {
+    width: 100%;
+  }
+  
+  .cork-board {
+    height: 500px;
+  }
 }
