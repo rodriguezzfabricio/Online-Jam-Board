@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import Board from './components/Board';
+import Canvas from './components/Canvas';
+import './index.css';
 
 const App = () => {
   // For MVP, we'll use a hardcoded board ID
@@ -12,7 +13,7 @@ const App = () => {
         <h1>Online Jam Board</h1>
       </header>
       <main>
-        <Board boardId={boardId} />
+        <Canvas boardId={boardId} />
       </main>
     </div>
   );
