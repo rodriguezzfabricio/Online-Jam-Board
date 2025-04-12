@@ -1,25 +1,38 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Toolbar from './Toolbar';
 import StickyNote from './StickyNote';
 
+const COLORS = {
+  yellow: '#fff9c4',
+  blue: '#bbdefb',
+  green: '#c8e6c9',
+  pink: '#f8bbd0',
+  orange: '#ffe0b2'
+};
+
 const Canvas = ({ boardId }) => {
   const [color, setColor] = useState('#000000');
-  const [brushWidth, setBrushWidth] = useState(5);
-  const [tool, setTool] = useState('pen');
+  const [brushWidth, setBrushWidth] = useState(3);
+  const [tool, setTool] = useState('text'); // 'text', 'pen', 'eraser'
   const [notes, setNotes] = useState([]);
+  const [currentNoteColor, setCurrentNoteColor] = useState(COLORS.yellow);
   const boardRef = useRef(null);
+  
+  // Load saved notes on initial render
+  useEffect(() => {
+    loadBoard();
+  }, []);
   
   // Add a new sticky note
   const handleAddNote = () => {
-    // Get board dimensions
     const board = boardRef.current;
     const boardRect = board.getBoundingClientRect();
     
-    // Create a note in the center of the board
     const newNote = {
-      id: Date.now(), // Use timestamp as a simple ID
-      x: (boardRect.width / 2) - 100, // Center the note (width is 200px)
-      y: (boardRect.height / 2) - 100, // Center the note (height is 200px)
+      id: Date.now(),
+      x: (boardRect.width / 2) - 100,
+      y: (boardRect.height / 2) - 100,
+      color: currentNoteColor
     };
     
     setNotes([...notes, newNote]);
@@ -28,6 +41,53 @@ const Canvas = ({ boardId }) => {
   // Remove a note
   const handleDeleteNote = (id) => {
     setNotes(notes.filter(note => note.id !== id));
+  };
+  
+  // Change note color
+  const handleNoteColorChange = (color) => {
+    setCurrentNoteColor(COLORS[color] || COLORS.yellow);
+  };
+  
+  // Save board to local storage
+  const saveBoard = () => {
+    localStorage.setItem('jamBoard', JSON.stringify({
+      boardId,
+      notes
+    }));
+    alert('Board saved successfully!');
+  };
+  
+  // Load board from local storage
+  const loadBoard = () => {
+    try {
+      const savedBoard = localStorage.getItem('jamBoard');
+      if (savedBoard) {
+        const { notes: savedNotes } = JSON.parse(savedBoard);
+        if (savedNotes && Array.isArray(savedNotes)) {
+          setNotes(savedNotes);
+          return true;
+        }
+      }
+      return false;
+    } catch (err) {
+      console.error('Error loading board:', err);
+      return false;
+    }
+  };
+  
+  // Export board as image
+  const exportAsImage = () => {
+    import('html2canvas').then(({ default: html2canvas }) => {
+      html2canvas(boardRef.current).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'jam-board.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }).catch(err => {
+      console.error('Error loading html2canvas:', err);
+      alert('Failed to export image. Please try again.');
+    });
   };
   
   return (
@@ -41,17 +101,25 @@ const Canvas = ({ boardId }) => {
         tool={tool}
         setTool={setTool}
         onAddNote={handleAddNote}
+        onColorChange={handleNoteColorChange}
+        currentNoteColor={currentNoteColor}
+        onSave={saveBoard}
+        onLoad={loadBoard}
+        onExport={exportAsImage}
       />
       
       <div className="cork-board" ref={boardRef}>
-        {/* Render all sticky notes */}
         {notes.map(note => (
           <StickyNote 
             key={note.id}
             id={note.id}
             initialX={note.x}
             initialY={note.y}
-            onDelete={() => handleDeleteNote(note.id)}
+            color={note.color}
+            onDelete={handleDeleteNote}
+            tool={tool}
+            brushColor={color}
+            brushSize={brushWidth}
           />
         ))}
         
