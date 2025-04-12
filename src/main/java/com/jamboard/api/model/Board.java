@@ -27,7 +27,7 @@ public class Board {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
+        
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Note> notes = new ArrayList<>();
     
