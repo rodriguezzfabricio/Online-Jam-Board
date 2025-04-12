@@ -17,8 +17,9 @@ public class noteSocketController {
     private final SimpMessagingTemplate messagingTemplate; 
     private NoteRepository noteRepository;
     @Autowired
-    public noteSocketController(SimpMessagingTemplate messagingTemplate){
+    public noteSocketController(SimpMessagingTemplate messagingTemplate, NoteRepository noteRepository){
         this.messagingTemplate = messagingTemplate;
+        this.noteRepository = noteRepository;
     }
 
     @MessageMapping("/note")
