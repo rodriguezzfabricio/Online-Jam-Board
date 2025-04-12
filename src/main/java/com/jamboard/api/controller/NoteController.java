@@ -1,7 +1,8 @@
 package com.jamboard.api.controller;
 
 import com.jamboard.api.model.Notes;
-import com.jamboard.api.Repository.NoteRepository;
+import com.jamboard.api.service.NoteService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -9,21 +10,52 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/notes")
+@CrossOrigin(origins = "http://localhost:3000") // Allow requests from React frontend
 public class NoteController {
-    //tweaked not controller
-    private final NoteRepository noteRepo;
+    private final NoteService noteService;
 
-    public NoteController(NoteRepository noteRepo) {
-        this.noteRepo = noteRepo;
-    }
-
-    @GetMapping("/board/{boardId}")
-    public List<Note> getNotesByBoard(@PathVariable UUID boardId) {
-        return noteRepo.findByBoardId(boardId);
+    public NoteController(NoteService noteService) {
+        this.noteService = noteService;
     }
 
     @PostMapping
-    public Note createNote(@RequestBody Note note) {
-        return noteRepo.save(note);
-    }
+    public ResponseEntity<Notes> createNote(@RequestBody Notes note) {
+        return ResponseEntity.ok(noteService.createNote(note));
+    }
+
+    @GetMapping("/board/{boardId}")
+    public ResponseEntity<List<Notes>> getNotesByBoard(@PathVariable UUID boardId) {
+        return ResponseEntity.ok(noteService.getNotesByBoardId(boardId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Notes> getNoteById(@PathVariable Long id) {
+        return noteService.getNoteById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Notes>> getAllNotes() {
+        return ResponseEntity.ok(noteService.getAllNotes());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Notes> updateNote(@PathVariable Long id, @RequestBody Notes note) {
+        return noteService.updateNote(id, note)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNote(@PathVariable Long id) {
+        noteService.deleteNote(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/board/{boardId}")
+    public ResponseEntity<Void> deleteAllNotesByBoard(@PathVariable UUID boardId) {
+        noteService.deleteAllNotesByBoardId(boardId);
+        return ResponseEntity.ok().build();
+    }
 }
