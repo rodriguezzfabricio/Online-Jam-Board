@@ -12,3 +12,4 @@ public interface NoteRepository extends JpaRepository<Notes, Long>{
     List<Notes> findByBoardId(UUID boardId); 
     
 }
+
